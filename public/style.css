@@ -187,3 +187,33 @@ footer.site .ps { font-family: 'Press Start 2P', monospace; font-size: 10px; col
 .chip-row .btn-ghost { flex: 1; padding: 8px 0; font-size: 12px; }
 
 .notice { font-size: 11px; color: var(--ghost); }
+
+/* no underlines, anywhere, ever */
+a, a:hover, a:focus, a:active, u { text-decoration: none !important; }
+
+/* bump / shake on fresh activity */
+@keyframes bump {
+  0%   { transform: translate(0, 0) rotate(0); }
+  15%  { transform: translate(-3px, 1px) rotate(-0.8deg); }
+  30%  { transform: translate(3px, -2px) rotate(0.8deg); }
+  45%  { transform: translate(-3px, 1px) rotate(-0.5deg); }
+  60%  { transform: translate(2px, -1px) rotate(0.5deg); }
+  75%  { transform: translate(-1px, 1px) rotate(0); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+.bump {
+  animation: bump 0.45s steps(7) both;
+  border-color: var(--accent) !important;
+}
+.bump-new {
+  animation: bump 0.6s steps(7) 3 both;
+  border-color: var(--green) !important;
+  box-shadow: 5px 5px 0 var(--shadow), 0 0 0 2px var(--green) !important;
+}
+.tag-new {
+  border: 1px solid var(--green); color: var(--green); background: rgba(74, 222, 128, 0.08);
+  padding: 3px 8px; text-transform: uppercase; letter-spacing: 1px; font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bump, .bump-new { animation: none; }
+}

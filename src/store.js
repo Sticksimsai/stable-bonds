@@ -47,6 +47,8 @@ function addCoin({ name, ticker, desc, peg, reserveAsset, creator, reserveUsd = 
     feesPegReserve: 0,
     graduated: reserveUsd >= TOKENOMICS.GRADUATION_USD,
     replies,
+    tradeCount: 0,
+    lastTradeAt: null,
     trades: [],
     history: makeHistory(24, drift)
   };
@@ -57,7 +59,9 @@ function addCoin({ name, ticker, desc, peg, reserveAsset, creator, reserveUsd = 
 function seedTrades(coin, rows) {
   for (const r of rows) {
     coin.trades.unshift({ who: r.who, side: r.side, usd: r.usd, tokens: round4(r.usd / 1.0), t: now() - r.agoMin * 60000 });
+    coin.tradeCount += 1;
   }
+  coin.lastTradeAt = coin.trades[0] ? coin.trades[0].t : null;
 }
 
 function seed() {
@@ -145,6 +149,8 @@ function trade(ticker, side, usd, who) {
   if (coin.history.length > 96) coin.history.shift();
   coin.trades.unshift({ who: who || 'you…demo', side: result.side, usd: result.usd, tokens: result.tokens, t: now() });
   coin.trades = coin.trades.slice(0, 50);
+  coin.tradeCount += 1;
+  coin.lastTradeAt = now();
 
   if (coin.reserveUsd >= TOKENOMICS.GRADUATION_USD) coin.graduated = true;
   return { result, coin };
@@ -173,6 +179,56 @@ function httpErr(status, message) {
   return e;
 }
 
+/* ---------- background market activity (keeps the board alive) ---------- */
+
+const BOT_NAMES = ['Jr2p…77m', 'Ady5…k2w', 'Pq9x…04r', 'Hq8s…1dd', 'Lm3v…8kp', 'Zx1c…b7q', 'Qw7h…5tz', 'Vb6n…e92', 'Mx4a…p1c', 'Tt9o…z3e', 'Kf2u…88b', 'Rw5d…q6n'];
+const MEME_WORDS = ['Hamster', 'Goblin', 'Wizard', 'Pickle', 'Noodle', 'Turbo', 'Sigma', 'Banana', 'Walrus', 'Gremlin', 'Potato', 'Cosmic', 'Nugget', 'Yeti', 'Mango', 'Llama', 'Disco', 'Gigachad', 'Toaster', 'Raccoon'];
+const MONEY_WORDS = ['Dollar', 'Buck', 'Peso', 'Franc', 'Scrip', 'Greenback', 'Cash', 'Note', 'Tender', 'Dough'];
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function randomTrade() {
+  const live = [...coins.values()].filter((c) => !c.graduated);
+  if (!live.length) return;
+  const coin = pick(live);
+  const side = Math.random() < 0.72 ? 'buy' : 'sell';
+  let usd = round2(5 + Math.random() * Math.random() * 600);
+  if (side === 'sell') usd = round2(Math.min(usd, coin.reserveUsd * 0.04));
+  if (usd < 1) return;
+  try { trade(coin.ticker, side, usd, pick(BOT_NAMES)); } catch (e) { /* curve said no; fine */ }
+}
+
+function randomLaunch() {
+  if (coins.size >= 48) return; // keep the demo board sane
+  for (let i = 0; i < 12; i++) {
+    const w = pick(MEME_WORDS), m = pick(MONEY_WORDS);
+    const ticker = (w.slice(0, 4) + (m === 'Dollar' ? 'USD' : m.slice(0, 3))).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    if (ticker.length < 3 || coins.has(ticker)) continue;
+    try {
+      return create({
+        name: `${w} ${m}`,
+        ticker,
+        desc: 'fresh off the curve. pegged and loaded.',
+        peg: pick(PEGS),
+        reserveAsset: pick(RESERVES),
+        initialBuyUsd: round2(20 + Math.random() * 400),
+        creator: pick(BOT_NAMES)
+      });
+    } catch (e) { return; }
+  }
+}
+
+let simRunning = false;
+function startSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  (function tradeLoop() {
+    setTimeout(() => { randomTrade(); tradeLoop(); }, 3000 + Math.random() * 5000);
+  })();
+  (function launchLoop() {
+    setTimeout(() => { randomLaunch(); launchLoop(); }, 40000 + Math.random() * 50000);
+  })();
+}
+
 seed();
 
-module.exports = { list, get, create, trade, holders, lastPrice, change24h, PEGS, RESERVES };
+module.exports = { list, get, create, trade, holders, lastPrice, change24h, startSimulation, PEGS, RESERVES };

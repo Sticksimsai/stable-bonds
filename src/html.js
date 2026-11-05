@@ -112,7 +112,7 @@ function boardPage({ q = '', sort = 'new' } = {}) {
   const cards = coins.map((c) => {
     const pct = Math.round((Math.min(1, c.reserveUsd / TOKENOMICS.GRADUATION_USD)) * 100);
     return `
-    <a class="coin-card" href="/coin/${esc(c.ticker)}">
+    <a class="coin-card" data-ticker="${esc(c.ticker)}" href="/coin/${esc(c.ticker)}">
       <span style="display:flex;gap:12px;align-items:center">
         <span class="tile" style="background:${tileColor(c.ticker)}">${esc(initials(c))}</span>
         <span style="min-width:0">
@@ -121,16 +121,16 @@ function boardPage({ q = '', sort = 'new' } = {}) {
         </span>
       </span>
       <span style="display:flex;justify-content:space-between;align-items:baseline">
-        <span class="mono-num" style="font-size:26px">${fmtPrice(store.lastPrice(c))}</span>
-        <span class="small" style="font-weight:700">${deltaSpan(store.change24h(c))}</span>
+        <span class="mono-num c-price" style="font-size:26px">${fmtPrice(store.lastPrice(c))}</span>
+        <span class="small c-delta" style="font-weight:700">${deltaSpan(store.change24h(c))}</span>
       </span>
       <span>
-        <span class="small muted" style="display:flex;justify-content:space-between;margin-bottom:5px"><span>mkt cap ${fmtUsd(c.reserveUsd, 0)}</span><span>${c.graduated ? 'GRADUATED' : pct + '% to grad'}</span></span>
-        <span class="bar" style="height:10px"><span style="width:${pct}%"></span></span>
+        <span class="small muted" style="display:flex;justify-content:space-between;margin-bottom:5px"><span class="c-mcap">mkt cap ${fmtUsd(c.reserveUsd, 0)}</span><span class="c-pct">${c.graduated ? 'GRADUATED' : pct + '% to grad'}</span></span>
+        <span class="bar" style="height:10px"><span class="c-bar" style="width:${pct}%"></span></span>
       </span>
       <span style="display:flex;justify-content:space-between;align-items:center" class="small faint">
         <span class="tag">${esc(c.peg)}</span>
-        <span>${c.replies} replies</span>
+        <span class="c-replies">${c.replies} replies</span>
       </span>
     </a>`;
   }).join('');
@@ -183,7 +183,7 @@ function boardPage({ q = '', sort = 'new' } = {}) {
     </div>
   </section>
   <section class="wrap" style="padding-bottom:24px">
-    <div class="grid">${cards || '<p class="muted">No stables match. Launch one?</p>'}</div>
+    <div class="grid" id="coin-grid" data-sort="${esc(sort)}" data-q="${esc(q)}">${cards || '<p class="muted">No stables match. Launch one?</p>'}</div>
   </section>`);
 }
 
@@ -215,15 +215,15 @@ function coinPage(coin, flash = '') {
           ${coin.desc ? `<p class="small muted" style="margin:8px 0 0;max-width:520px">${esc(coin.desc)}</p>` : ''}
         </div>
         <div style="text-align:right">
-          <p class="mono-num" style="margin:0;font-size:44px;line-height:1">${fmtPrice(price)}</p>
-          <p class="small" style="margin:4px 0 0">${deltaSpan(store.change24h(coin))} / 24h · <span class="muted">peg target $1.0000</span></p>
+          <p class="mono-num" id="live-price" style="margin:0;font-size:44px;line-height:1">${fmtPrice(price)}</p>
+          <p class="small" style="margin:4px 0 0"><span id="live-delta">${deltaSpan(store.change24h(coin))}</span> / 24h · <span class="muted">peg target $1.0000</span></p>
         </div>
       </div>
 
       <div class="panel">
         <div class="small faint" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">
           <span>${esc(coin.ticker)} / USD · 24h</span>
-          <span>circulating ${fmtNum(coin.circulating)} ${esc(coin.ticker)}</span>
+          <span id="live-circ">circulating ${fmtNum(coin.circulating)} ${esc(coin.ticker)}</span>
         </div>
         ${chartSvg(coin.history, coin.ticker)}
       </div>
@@ -236,7 +236,7 @@ function coinPage(coin, flash = '') {
         <div class="scroll-x">
           <table class="retro">
             <thead><tr><th>Account</th><th>Side</th><th class="num">USD</th><th class="num">${esc(coin.ticker)}</th><th class="num">Time</th></tr></thead>
-            <tbody>${trades || '<tr><td colspan="5" class="muted" style="padding:16px">No trades yet — be first on the curve.</td></tr>'}</tbody>
+            <tbody id="trades-body">${trades || '<tr><td colspan="5" class="muted" style="padding:16px">No trades yet — be first on the curve.</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -273,9 +273,9 @@ function coinPage(coin, flash = '') {
       <div class="panel">
         <h2 class="panel-title">Bonding curve</h2>
         <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span>${fmtUsd(coin.reserveUsd, 0)} raised</span><span style="color:var(--accent);font-weight:700">${pct}%</span>
+          <span id="curve-raised">${fmtUsd(coin.reserveUsd, 0)} raised</span><span id="curve-pct" style="color:var(--accent);font-weight:700">${pct}%</span>
         </div>
-        <div class="bar" style="height:14px;margin-bottom:10px"><span style="width:${pct}%"></span></div>
+        <div class="bar" style="height:14px;margin-bottom:10px"><span id="curve-bar" style="width:${pct}%"></span></div>
         <p class="small faint" style="margin:0;line-height:1.6">${coin.graduated
           ? `Graduated. Curve reserves migrated to a <strong style="color:var(--ink)">LaunchLab</strong> ${esc(coin.reserveAsset)} pool.`
           : `At <strong style="color:var(--ink)">${fmtUsd(TOKENOMICS.GRADUATION_USD, 0)}</strong> market cap, liquidity migrates to a <strong style="color:var(--ink)">LaunchLab</strong> ${esc(coin.reserveAsset)} pool and the curve closes. <strong style="color:var(--ink)">${fmtUsd(Math.max(0, TOKENOMICS.GRADUATION_USD - coin.reserveUsd), 0)}</strong> to go.`}</p>

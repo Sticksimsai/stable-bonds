@@ -47,6 +47,7 @@ app.get('/api/coins', (req, res) => {
     marketCapUsd: c.reserveUsd, reserveUsd: c.reserveUsd,
     circulating: c.circulating, graduated: c.graduated,
     graduationUsd: TOKENOMICS.GRADUATION_USD,
+    tradeCount: c.tradeCount, lastTradeAt: c.lastTradeAt, replies: c.replies,
     page: '/coin/' + c.ticker
   })));
 });
@@ -61,6 +62,7 @@ app.get('/api/coins/:ticker', (req, res) => {
     marketCapUsd: c.reserveUsd, reserveUsd: c.reserveUsd, circulating: c.circulating,
     feesPegReserve: c.feesPegReserve, graduated: c.graduated,
     graduationUsd: TOKENOMICS.GRADUATION_USD,
+    tradeCount: c.tradeCount, lastTradeAt: c.lastTradeAt,
     history: c.history, trades: c.trades, holders: store.holders(c)
   });
 });
@@ -101,6 +103,8 @@ app.get('/api/swap/rates', (req, res) => res.json({ rates: swap.RATES_USD, feePc
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 app.use((req, res) => res.status(404).send(pages.notFoundPage()));
+
+if (process.env.SIMULATE !== 'off') store.startSimulation();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`stable.bonds listening on :${PORT}`));
